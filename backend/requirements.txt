@@ -3,7 +3,7 @@ uvicorn[standard]==0.34.0
 sqlalchemy[asyncio]==2.0.38
 asyncpg==0.30.0
 alembic==1.14.1
-pydantic-settings==2.8.2
+pydantic-settings>=2.8.0
 pydantic[email]==2.10.6
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
@@ -13,6 +13,7 @@ redis==5.2.1
 boto3==1.36.19
 python-multipart==0.0.20
 psycopg2-binary==2.9.10
+neo4j==5.15.0
 
 # Tree-sitter core
 tree-sitter==0.23.2

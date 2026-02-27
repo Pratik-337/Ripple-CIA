@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.project_name,
+    title="Ripple",
     version="1.0.0",
     lifespan=lifespan,
 )

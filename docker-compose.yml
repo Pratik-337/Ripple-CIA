@@ -47,7 +47,25 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---> ADDED: Neo4j Graph Database for Impact Analysis <---
+  neo4j:
+    image: neo4j:5.15.0
+    container_name: ripple_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/ripple123
+    ports:
+      - "7474:7474"  # Browser UI
+      - "7687:7687"  # Bolt connection for Python Driver
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  neo4j_data: # ---> ADDED: Volume for Neo4j <---
