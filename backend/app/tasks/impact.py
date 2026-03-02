@@ -51,8 +51,9 @@ async def _analyze_impact_async(change_id: str):
             modified_content = draft.content or ""
 
             diff_data = generate_diff(original_content, modified_content)
+            # hunk["content"] is already a joined string after generate_diff processes it
             diff_text_accum.append(f"--- {proj_f.path}\n+++ {proj_f.path}\n" + "\n".join(
-                line for hunk in diff_data["hunks"] for line in hunk["content"]
+                hunk["content"] for hunk in diff_data["hunks"]
             ))
 
             # Naively adding file path export symbols if they exist

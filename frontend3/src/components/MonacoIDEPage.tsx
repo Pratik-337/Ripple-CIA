@@ -364,7 +364,7 @@ export const MonacoIDEPage = ({
                 component_id: componentId,
                 title,
                 description,
-                draft_ids: selectedFileIds
+                file_ids: selectedFileIds
             });
             setShowMapImpact(false);
             onChangeSubmitted(res.id);
@@ -611,3 +611,4 @@ export const MonacoIDEPage = ({
         </div>
     );
 };
+

@@ -16,6 +16,8 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
+    # Use solo pool for Windows compatibility (billiard multiprocessing issues)
+    worker_pool="solo",
     beat_schedule={
         "auto-confirm-stale-impacts": {
             "task": "app.tasks.autoconfirm.auto_confirm_stale_impacts",

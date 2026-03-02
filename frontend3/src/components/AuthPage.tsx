@@ -16,9 +16,9 @@ interface AuthPageProps {
 
 export const AuthPage = ({ onBack }: AuthPageProps) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState("test@ripple.com");
-  const [password, setPassword] = useState("password123");
-  const [name, setName] = useState("Test User");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 

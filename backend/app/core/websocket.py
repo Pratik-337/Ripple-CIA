@@ -75,7 +75,9 @@ async def redis_listener(manager: ConnectionManager) -> None:
             if message["type"] == "pmessage":
                 try:
                     channel = message["channel"]
-                    user_id = channel.split(":")[1]
+                    # Channel format is "ws:user:{user_id}" — extract the last segment
+                    parts = channel.split(":")
+                    user_id = parts[-1] if len(parts) >= 3 else parts[1] if len(parts) >= 2 else None
                     payload = json.loads(message["data"])
                     event_type = payload.get("event")
                     data = payload.get("data", {})

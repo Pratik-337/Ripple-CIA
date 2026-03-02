@@ -515,8 +515,14 @@ export const ProjectOverviewPage = ({
                     {/* Project meta row */}
                     <div className="flex items-center gap-5 px-6 py-3">
                         <div className="flex items-center gap-2">
-                            <Avatar initials={project.owner.initials} color={project.owner.color} size="xs" />
-                            <span className="text-xs text-white/40">{project.owner.name}</span>
+                            {project.owner ? (
+                                <>
+                                    <Avatar initials={project.owner.initials || "?"} color={project.owner.color} size="xs" />
+                                    <span className="text-xs text-white/40">{project.owner.name}</span>
+                                </>
+                            ) : (
+                                <span className="text-xs text-white/40">Loading...</span>
+                            )}
                         </div>
                         <span className="text-white/15">·</span>
                         <span className="text-xs text-white/30">Created {project.createdAt}</span>
@@ -570,7 +576,7 @@ export const ProjectOverviewPage = ({
 
                     {/* Right sidebar — Active Changes Feed */}
                     <ActiveChangesFeed
-                        changes={project.activeChanges}
+                        changes={project.activeChanges || []}
                         onReview={(change) => onReviewChange(project.id, change.id)}
                     />
                 </div>

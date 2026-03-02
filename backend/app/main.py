@@ -15,9 +15,13 @@ from app.core.security import verify_access_token
 async def lifespan(app: FastAPI):
     ensure_bucket_exists()
     
+    from app.core.redis import init_redis, close_redis
+    await init_redis()
+    
     redis_listener_task = asyncio.create_task(redis_listener(manager))
     yield
     redis_listener_task.cancel()
+    await close_redis()
 
 
 app = FastAPI(

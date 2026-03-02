@@ -22,7 +22,7 @@ class ExportInfo:
 class ParsedFile:
     imports: List[ImportInfo] = field(default_factory=list)
     exports: List[ExportInfo] = field(default_factory=list)
-    definitons: List[str] = field(default_factory=list)
+    definitions: List[str] = field(default_factory=list)
     calls: List[str] = field(default_factory=list)
 
 class TypeScriptExtractor:

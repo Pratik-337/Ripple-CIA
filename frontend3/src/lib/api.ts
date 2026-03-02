@@ -146,7 +146,7 @@ export interface ChangeImpact {
     contributor_id: string;
     contributor_name: string;
     detection_method: string;
-    confidence: string;
+    confidence: number;
     affected_lines: any;
     llm_annotation: string | null;
     acknowledged: boolean;
@@ -156,9 +156,11 @@ export interface ChangeImpact {
 export interface ApiNotification {
     id: string;
     type: string;
-    message: string;
+    title: string;
+    body: string | null;
+    link: string | null;
     meta_data: Record<string, string> | null;
-    read: boolean;
+    is_read: boolean;
     created_at: string;
 }
 
@@ -171,10 +173,15 @@ export interface Invite {
 
 export interface Collaborator {
     id: string;
-    name: string;
-    handle: string;
-    avatar_url: string | null;
+    display_name: string;
     email: string;
+    avatar_url: string | null;
+    shared_projects?: string[];
+    last_activity?: string;
+    /** @deprecated Use display_name instead */
+    name: string;
+    /** @deprecated Use email instead */
+    handle: string;
 }
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
@@ -190,7 +197,7 @@ export const authApi = {
 
     me: () => get<{ access_token: string, user: UserProfile }>('/auth/me'),
 
-    githubUrl: () => get<{ redirect_url: string }>('/auth/github'),
+    githubUrl: () => `${BASE_URL}/auth/github`,
 };
 
 // ─── Projects API ─────────────────────────────────────────────────────────────
@@ -200,7 +207,7 @@ export const projectsApi = {
 
     get: (id: string) => get<Project>(`/projects/${id}`),
 
-    getProject: (id: string) => get<ProjectData>(`/projects/${id}/overview`),
+    getProject: (id: string) => get<ProjectData>(`/projects/${id}`),
 
     create: (name: string, description: string, color: string, icon: string) =>
         post<Project>('/projects', { name, description, color, icon }),
@@ -246,7 +253,10 @@ export const filesApi = {
     list: (projectId: string) => get<ProjectFile[]>(`/projects/${projectId}/files`),
 
     requestUploadUrls: (projectId: string, files: { path: string; size_bytes: number; language: string }[]) =>
-        post<{ file_id: string; s3_key: string; upload_url: string }[]>('/files/upload-url', { project_id: projectId, files }),
+        post<{ file_id: string; s3_key: string; upload_url: string }[]>('/files/upload-url', {
+            project_id: projectId,
+            files: files.map(f => ({ name: f.path, size: f.size_bytes, content_type: 'text/plain' }))
+        }),
 
     confirmBatch: (projectId: string, fileIds: string[]) =>
         post<{ status: string; file_count: number }>(`/projects/${projectId}/files/confirm-batch`, { file_ids: fileIds }),
@@ -254,13 +264,13 @@ export const filesApi = {
     assignToComponent: (projectId: string, fileIds: string[], componentId: string) =>
         post(`/projects/${projectId}/files/assign`, { file_ids: fileIds, component_id: componentId }),
 
-    githubPreview: (projectId: string, repoUrl: string) =>
-        post<{ owner: string; repo: string; file_count: number; files: { path: string; size_bytes: number }[] }>(
-            `/projects/${projectId}/github-import/preview`, { repo_url: repoUrl }
+    githubPreview: (projectId: string, repoUrl: string, branch: string = 'main') =>
+        post<string[]>(
+            `/projects/${projectId}/github-import/preview`, { repo_url: repoUrl, branch }
         ),
 
-    githubConfirm: (projectId: string, owner: string, repo: string, paths: string[]) =>
-        post(`/projects/${projectId}/github-import/confirm`, { owner, repo, paths }),
+    githubConfirm: (projectId: string, repoUrl: string, branch: string = 'main', selectedPaths?: string[]) =>
+        post(`/projects/${projectId}/github-import/confirm`, { repo_url: repoUrl, branch, selected_paths: selectedPaths }),
 
     getComponentFiles: (componentId: string) =>
         get<{ id: string; path: string; language: string; size_bytes: number; download_url: string }[]>(`/components/${componentId}/files`),
@@ -299,8 +309,8 @@ export const notificationsApi = {
 
     markRead: (ids?: string[]) => post('/notifications/mark-read', ids ? { ids } : { all: true }),
 
-    createInvite: (projectId: string, email: string, componentId?: string) =>
-        post<Invite>('/invites', { project_id: projectId, invited_email: email, component_id: componentId }),
+    createInvite: (projectId: string, email: string, componentId?: string, role: string = 'contributor') =>
+        post<Invite>(`/projects/${projectId}/invites`, { email, component_id: componentId, role }),
 
     acceptInvite: (inviteId: string) => post(`/invites/${inviteId}/accept`),
 

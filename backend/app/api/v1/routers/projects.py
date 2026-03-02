@@ -11,15 +11,25 @@ from app.models.project import Project
 from app.models.component import Component, ComponentContributor
 from app.models.change import ChangeRequest, Invite
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+ALLOWED_STRICTNESS_MODES = ["permissive", "standard", "strict"]
 
 class ProjectCreate(BaseModel):
     name: str
     description: str = ""
     color: str = "from-violet-500 to-purple-600"
     icon: str = "box"
+    strictness_mode: str = "standard"
+    
+    @field_validator('strictness_mode')
+    @classmethod
+    def validate_strictness_mode(cls, v: str) -> str:
+        if v not in ALLOWED_STRICTNESS_MODES:
+            raise ValueError(f"strictness_mode must be one of: {', '.join(ALLOWED_STRICTNESS_MODES)}")
+        return v
 
 class ProjectUpdate(BaseModel):
     name: str | None = None
@@ -27,6 +37,13 @@ class ProjectUpdate(BaseModel):
     color: str | None = None
     icon: str | None = None
     strictness_mode: str | None = None
+    
+    @field_validator('strictness_mode')
+    @classmethod
+    def validate_strictness_mode(cls, v: str | None) -> str | None:
+        if v is not None and v not in ALLOWED_STRICTNESS_MODES:
+            raise ValueError(f"strictness_mode must be one of: {', '.join(ALLOWED_STRICTNESS_MODES)}")
+        return v
 
 @router.post("")
 async def create_project(req: ProjectCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):

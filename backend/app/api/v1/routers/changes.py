@@ -21,7 +21,8 @@ class ChangeCreateReq(BaseModel):
     component_id: str
     title: str
     description: Optional[str] = None
-    draft_ids: List[str]
+    draft_ids: List[str] = []
+    file_ids: List[str] = []  # Alternative: pass file IDs and we'll look up drafts
 
 @router.post("/projects/{project_id}/changes", status_code=202)
 async def submit_change(project_id: str, req: ChangeCreateReq, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -39,10 +40,25 @@ async def submit_change(project_id: str, req: ChangeCreateReq, db: AsyncSession 
         if not proj or proj.owner_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized on this component")
 
+    # Resolve file_ids to draft_ids if needed
+    draft_ids_to_use = list(req.draft_ids)
+    if req.file_ids and not req.draft_ids:
+        # Look up the latest draft for each file
+        for file_id in req.file_ids:
+            result = await db.execute(
+                select(FileDraft.id)
+                .where(FileDraft.file_id == file_id)
+                .order_by(FileDraft.created_at.desc())
+                .limit(1)
+            )
+            draft = result.scalar_one_or_none()
+            if draft:
+                draft_ids_to_use.append(draft)
+    
     # verify drafts
-    d_res = await db.execute(select(FileDraft).where(FileDraft.id.in_(req.draft_ids)))
+    d_res = await db.execute(select(FileDraft).where(FileDraft.id.in_(draft_ids_to_use)))
     drafts = d_res.scalars().all()
-    if len(drafts) != len(req.draft_ids):
+    if len(drafts) != len(draft_ids_to_use):
         raise HTTPException(status_code=400, detail="Invalid draft IDs")
         
     for d in drafts:
@@ -319,8 +335,11 @@ async def approve_change(change_id: str, db: AsyncSession = Depends(get_db), cur
         f = f_res.scalars().first()
         if not f:
             continue
-            
-        new_key = f"projects/{cr.project_id}/files/{f.id}/v{uuid.uuid4().hex[:8]}.ts"
+        
+        import os
+        _, ext = os.path.splitext(f.path)
+        ext = ext or ".txt"
+        new_key = f"projects/{cr.project_id}/files/{f.id}/v{uuid.uuid4().hex[:8]}{ext}"
         b_content = (d.content or "").encode('utf8')
         await upload_bytes(new_key, b_content, "text/plain")
         

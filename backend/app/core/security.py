@@ -31,9 +31,28 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(password=password_byte_enc, hashed_password=hashed_password)
 
 
+def _parse_jwt_expires_in(value: str) -> int:
+    """Parse jwt_expires_in setting to minutes. Supports formats like '30m', '1h', '1d'."""
+    value = value.strip().lower()
+    if value.endswith("m"):
+        return int(value[:-1])
+    elif value.endswith("h"):
+        return int(value[:-1]) * 60
+    elif value.endswith("d"):
+        return int(value[:-1]) * 60 * 24
+    elif value.endswith("minutes"):
+        return int(value.replace("minutes", "").strip())
+    elif value.endswith("hours"):
+        return int(value.replace("hours", "").strip()) * 60
+    elif value.endswith("days"):
+        return int(value.replace("days", "").strip()) * 60 * 24
+    else:
+        # Default fallback: treat as minutes
+        return int(value)
+
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    minutes = int(settings.jwt_expires_in.replace("m", ""))
+    minutes = _parse_jwt_expires_in(settings.jwt_expires_in)
     expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     
     to_encode.update({

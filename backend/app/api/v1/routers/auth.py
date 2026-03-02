@@ -70,13 +70,19 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if invites:
         await db.commit()
 
+    # Generate access token so the frontend can auto-login after registration
+    access_token = create_access_token({"userId": new_user.id, "email": new_user.email, "role": new_user.role})
+
     return {
         "data": {
-            "id": new_user.id,
-            "email": new_user.email,
-            "display_name": new_user.display_name,
-            "avatar_url": new_user.avatar_url,
-            "is_verified": new_user.is_verified,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": new_user.id,
+                "email": new_user.email,
+                "display_name": new_user.display_name,
+                "avatar_url": new_user.avatar_url,
+            }
         },
         "message": "Registration successful"
     }
@@ -287,4 +293,5 @@ async def github_callback(state: str, code: str, response: Response, db: AsyncSe
             "refresh_token", raw_rt, httponly=True, samesite="lax", path="/api/v1/auth", max_age=604800
         )
         
-        return RedirectResponse("http://localhost:5173/auth/callback")
+        frontend_url = settings.allowed_origins.split(",")[0].strip()
+        return RedirectResponse(f"{frontend_url}/auth/callback")

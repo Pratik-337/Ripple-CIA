@@ -36,6 +36,7 @@ services:
     environment:
       MINIO_ROOT_USER: ripple
       MINIO_ROOT_PASSWORD: ripple123
+      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -46,6 +47,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # MinIO setup - sets bucket policy on startup
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to start...';
+      sleep 10;
+      mc alias set myminio http://minio:9000 ripple ripple123 || exit 0;
+      echo 'Creating bucket if not exists...';
+      mc mb myminio/ripple-files || true;
+      echo 'Setting anonymous policy...';
+      mc anonymous set download myminio/ripple-files 2>/dev/null || true;
+      mc anonymous set upload myminio/ripple-files 2>/dev/null || true;
+      mc anonymous set public myminio/ripple-files 2>/dev/null || true;
+      echo 'Done with MinIO setup';
+      exit 0;
+      "
 
 volumes:
   postgres_data:

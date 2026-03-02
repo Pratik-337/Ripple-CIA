@@ -15,6 +15,11 @@ async def get_redis() -> aioredis.Redis:
     return _redis_pool
 
 
+async def init_redis() -> None:
+    """Initialize Redis connection pool."""
+    await get_redis()
+
+
 async def publish(channel: str, message: str) -> None:
     r = await get_redis()
     await r.publish(channel, message)
