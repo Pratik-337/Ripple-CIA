@@ -120,6 +120,7 @@ async def list_projects(db: AsyncSession = Depends(get_db), current_user: User =
     stats_query = (
         select(
             Project.id.label("project_id"),
+            Project.owner_id,
             Project.name,
             Project.description,
             Project.color,
@@ -147,6 +148,15 @@ async def list_projects(db: AsyncSession = Depends(get_db), current_user: User =
     
     data = []
     for row in stats_res.fetchall():
+        # Get owner's info
+        owner_query = await db.execute(
+            select(User).where(User.id == row.owner_id)
+        )
+        owner = owner_query.scalars().first()
+        
+        # Determine user role (owner or contributor)
+        is_owner = row.owner_id == current_user.id
+        
         data.append({
             "id": row.project_id,
             "name": row.name,
@@ -154,9 +164,19 @@ async def list_projects(db: AsyncSession = Depends(get_db), current_user: User =
             "color": row.color,
             "icon": row.icon,
             "status": row.status,
+            "isDraft": row.status == "draft",
             "created_at": row.created_at.isoformat(),
-            "component_count": row.component_count,
-            "contributor_count": row.contributor_count
+            "componentCount": row.component_count,
+            "contributorCount": row.contributor_count,
+            "activeChanges": 0,  # TODO: Add change count query
+            "lastActivity": row.created_at.isoformat(),  # TODO: Add last activity from changes
+            "owner": {
+                "id": owner.id if owner else "",
+                "name": owner.display_name if owner else "",
+                "initials": "".join([n[0] for n in (owner.display_name.split() if owner and owner.display_name else [])]).upper() if owner else "?",
+                "color": "from-violet-500 to-purple-600"  # Default color
+            },
+            "role": "Owner" if is_owner else "Contributor"
         })
     return {"data": data}
 
@@ -210,14 +230,14 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db), curre
             "icon": project.icon,
             "created_at": project.created_at.isoformat(),
             "owner_id": project.owner_id,
-            "active_change_count": active_change_count,
+            "activeChanges": active_change_count,
             "components": [
                 {
                     "id": c.id,
                     "name": c.name,
                     "color": c.color,
                     "status": c.status,
-                    "file_count": len(c.files),
+                    "fileCount": len(c.files),
                     "contributors": [
                         {
                             "user_id": ccb.user.id,
@@ -227,7 +247,10 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db), curre
                             "avatar_url": ccb.user.avatar_url
                         }
                         for ccb in c.contributors
-                    ]
+                    ],
+                    "lastActivity": c.created_at.isoformat() if c.created_at else "",
+                    "activeChanges": 0,  # TODO: Add per-component change count
+                    "isMyComponent": current_user.id == project.owner_id or any(ccb.user.id == current_user.id for ccb in c.contributors)
                 }
                 for c in components
             ]
