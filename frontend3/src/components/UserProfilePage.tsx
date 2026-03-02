@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
     ArrowLeft, Waves, User, Mail, Lock, Bell,
     Check, Loader2, Eye, EyeOff, Save, Camera,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Particles } from "@/src/components/ui/particles";
+import { authApi, usersApi, type UserProfile } from "@/src/lib/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -125,12 +126,51 @@ const AvatarUpload = ({
 // ─── Profile Section ──────────────────────────────────────────────────────────
 
 const ProfileSection = () => {
-    const [displayName, setDisplayName] = useState("Alex Rivera");
-    const [email, setEmail] = useState("alex@co.com");
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [displayName, setDisplayName] = useState("");
+    const [email, setEmail] = useState("");
     const [emailDirty, setEmailDirty] = useState(false);
-    const initial = { name: "Alex Rivera", email: "alex@co.com" };
-    const isDirty = displayName !== initial.name || email !== initial.email;
+    const [loading, setLoading] = useState(true);
     const { saving, saved, trigger } = useSaveState();
+
+    useEffect(() => {
+        const loadUser = async () => {
+            try {
+                const userData = await authApi.me();
+                setUser(userData.user);
+                setDisplayName(userData.user.display_name || "");
+                setEmail(userData.user.email || "");
+            } catch (err) {
+                console.error("Failed to load user:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadUser();
+    }, []);
+
+    const initial = { name: user?.display_name || "", email: user?.email || "" };
+    const isDirty = displayName !== initial.name || email !== initial.email;
+
+    const handleSave = async () => {
+        if (!isDirty || saving) return;
+        trigger();
+        try {
+            await usersApi.updateProfile({ display_name: displayName });
+            setUser(prev => prev ? { ...prev, display_name: displayName } : null);
+        } catch (err) {
+            console.error("Failed to update profile:", err);
+        }
+    };
+
+    // Show loading state while fetching user data
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-white/40" />
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -142,7 +182,7 @@ const ProfileSection = () => {
             <div className="space-y-6 max-w-lg">
                 {/* Avatar */}
                 <AvatarUpload
-                    initials="AR"
+                    initials={user?.display_name ? user.display_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : "U"}
                     color="from-violet-500 to-purple-600"
                     onUpload={() => { }}
                 />
@@ -181,7 +221,7 @@ const ProfileSection = () => {
                     )}
                 </div>
 
-                <SaveButton id="save-profile-btn" dirty={isDirty} saving={saving} saved={saved} onClick={trigger} />
+                <SaveButton id="save-profile-btn" dirty={isDirty} saving={saving} saved={saved} onClick={handleSave} />
             </div>
         </div>
     );

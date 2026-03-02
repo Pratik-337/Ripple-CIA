@@ -28,8 +28,8 @@ export const GlobalTeamsPage = ({ onBack }: { onBack: () => void }) => {
 
     const collaborators: Collaborator[] = rawCollaborators.map(c => ({
         id: c.id,
-        name: c.name,
-        handle: c.handle,
+        name: c.name || "",
+        handle: c.handle || "",
         initials: (c.name || "U").substring(0, 2).toUpperCase(),
         avatarColor: "from-blue-500 to-indigo-600",
         sharedProjects: ["Shared Project"], // Backend Doesn't return shared projects, mock it
@@ -38,8 +38,8 @@ export const GlobalTeamsPage = ({ onBack }: { onBack: () => void }) => {
     }));
 
     const filtered = collaborators.filter(c =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.handle.toLowerCase().includes(query.toLowerCase()) ||
+        (c.name || "").toLowerCase().includes(query.toLowerCase()) ||
+        (c.handle || "").toLowerCase().includes(query.toLowerCase()) ||
         c.sharedProjects.some(p => p.toLowerCase().includes(query.toLowerCase()))
     );
 

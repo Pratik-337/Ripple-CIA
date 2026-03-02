@@ -1,10 +1,31 @@
-import React, { useState } from "react";
-import { ArrowLeft, Settings, Bell, Shield, User, Monitor } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Settings, Bell, Shield, User, Monitor, Loader2 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Particles } from "./ui/particles";
+import { authApi, type UserProfile } from "@/src/lib/api";
 
 export const GlobalSettingsPage = ({ onBack }: { onBack: () => void }) => {
     const [activeTab, setActiveTab] = useState<"general" | "notifications" | "security">("general");
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            try {
+                const userData = await authApi.me();
+                setUser(userData.user);
+            } catch (err) {
+                console.error("Failed to load user:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadUser();
+    }, []);
+
+    const initials = user?.display_name 
+        ? user.display_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() 
+        : "U";
 
     return (
         <div className="flex h-screen bg-black text-white overflow-hidden relative">
@@ -67,7 +88,7 @@ export const GlobalSettingsPage = ({ onBack }: { onBack: () => void }) => {
                                     <div className="space-y-5">
                                         <div className="flex items-center gap-6">
                                             <div className="h-20 w-20 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white shadow-xl shrink-0">
-                                                AR
+                                                {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : initials}
                                             </div>
                                             <div>
                                                 <button className="bg-white/10 hover:bg-white/15 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors mb-2">
@@ -81,7 +102,7 @@ export const GlobalSettingsPage = ({ onBack }: { onBack: () => void }) => {
                                             <label className="text-sm font-medium text-white/70">Display Name</label>
                                             <input
                                                 type="text"
-                                                defaultValue="Alex Rivera"
+                                                defaultValue={user?.display_name || ""}
                                                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors"
                                             />
                                         </div>
@@ -90,8 +111,9 @@ export const GlobalSettingsPage = ({ onBack }: { onBack: () => void }) => {
                                             <label className="text-sm font-medium text-white/70">Email Address</label>
                                             <input
                                                 type="email"
-                                                defaultValue="alex@ripple.ai"
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors"
+                                                value={user?.email || ""}
+                                                disabled
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/50 focus:outline-none focus:border-violet-500/50 transition-colors"
                                             />
                                         </div>
                                     </div>

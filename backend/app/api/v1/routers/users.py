@@ -10,6 +10,43 @@ from app.models.user import User
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+@router.get("/me")
+async def get_current_user_profile(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get current user's profile."""
+    return {
+        "data": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "display_name": current_user.display_name,
+            "avatar_url": current_user.avatar_url,
+        }
+    }
+
+@router.patch("/me")
+async def update_current_user_profile(
+    display_name: str | None = None,
+    avatar_url: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update current user's profile."""
+    if display_name is not None:
+        current_user.display_name = display_name
+    if avatar_url is not None:
+        current_user.avatar_url = avatar_url
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return {
+        "data": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "display_name": current_user.display_name,
+            "avatar_url": current_user.avatar_url,
+        }
+    }
+
 @router.get("/search")
 async def search_users(q: str = Query(..., min_length=2), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     query = (

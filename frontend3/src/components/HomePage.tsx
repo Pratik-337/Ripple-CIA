@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { projectsApi, notificationsApi, ApiNotification, Invite } from '@/src/lib/api';
+import { projectsApi, notificationsApi, authApi, ApiNotification, Invite } from '@/src/lib/api';
 import { NewProjectWizard } from "@/src/components/NewProjectWizard";
 import {
   LayoutDashboard,
@@ -307,6 +307,12 @@ export const HomePage = ({
   onOpenView?: (viewType: 'global-changes' | 'global-teams' | 'global-notifications' | 'global-settings') => void;
 }) => {
   const queryClient = useQueryClient();
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => authApi.me(),
+  });
+  const user = currentUser?.user;
+  
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
@@ -414,11 +420,11 @@ export const HomePage = ({
               className="flex items-center gap-3 px-2 py-2 rounded-lg cursor-pointer hover:bg-white/5 transition-colors group mb-1"
             >
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xs font-bold shrink-0">
-                AR
+                {user?.display_name ? user.display_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : "U"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">Alex Rivera</p>
-                <p className="text-[11px] text-white/30 truncate">alex@ripple.ai</p>
+                <p className="text-sm font-medium text-white truncate">{user?.display_name || "User"}</p>
+                <p className="text-[11px] text-white/30 truncate">{user?.email || ""}</p>
               </div>
               <ChevronRight className="h-3 w-3 text-white/20 group-hover:text-white/50 transition-colors" />
             </div>

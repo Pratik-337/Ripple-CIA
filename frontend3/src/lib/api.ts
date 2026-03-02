@@ -184,6 +184,15 @@ export interface Collaborator {
     handle: string;
 }
 
+// ─── Users API ─────────────────────────────────────────────────────────────────
+
+export const usersApi = {
+    getProfile: () => get<UserProfile>('/users/me'),
+    
+    updateProfile: (data: { display_name?: string; avatar_url?: string }) =>
+        patch<UserProfile>('/users/me', data),
+};
+
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 
 export const authApi = {
