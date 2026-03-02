@@ -279,16 +279,30 @@ const DeleteModal = ({
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
 // General
-const GeneralSection = ({ projectName, description }: { projectName: string; description: string }) => {
+const GeneralSection = ({ projectId, projectName, description }: { projectId: string; projectName: string; description: string }) => {
+    const queryClient = useQueryClient();
     const [name, setName] = useState(projectName);
     const [desc, setDesc] = useState(description);
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
     const isDirty = name !== projectName || desc !== description;
 
+    const updateMutation = useMutation({
+        mutationFn: (data: { name: string; description: string }) => projectsApi.update(projectId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            setSaving(false);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2500);
+        },
+        onError: () => {
+            setSaving(false);
+        },
+    });
+
     const handleSave = () => {
         setSaving(true);
-        setTimeout(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500); }, 900);
+        updateMutation.mutate({ name, description: desc });
     };
 
     return (
@@ -835,7 +849,7 @@ export const ProjectSettingsPage = ({
 
                         {/* General */}
                         <div ref={el => { sectionRefs.current.general = el; }}>
-                            <GeneralSection projectName={projectData?.name || ""} description={projectData?.description || ""} />
+                            <GeneralSection projectId={projectId} projectName={projectData?.name || ""} description={projectData?.description || ""} />
                         </div>
 
                         {/* Divider */}
