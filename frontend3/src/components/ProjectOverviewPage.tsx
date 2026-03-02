@@ -151,8 +151,8 @@ const ComponentCard = ({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center">
                         {component.contributors.slice(0, maxAvatars).map((c, i) => (
-                            <div key={c.id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: maxAvatars - i }} className="relative">
-                                <Avatar initials={c.initials} color={c.color} size="xs" />
+                            <div key={c.user_id} style={{ marginLeft: i === 0 ? 0 : -6, zIndex: maxAvatars - i }} className="relative">
+                                <Avatar initials={(c.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase()} color="from-emerald-500 to-green-600" size="xs" />
                             </div>
                         ))}
                         {component.contributors.length > maxAvatars && (
@@ -360,7 +360,12 @@ const InviteSlideOver = ({
                         <div className="space-y-2">
                             {Array.from(
                                 new Map(
-                                    project.components.flatMap(c => c.contributors).map(ct => [ct.id, ct])
+                                    project.components.flatMap(c => c.contributors).map(ct => [ct.user_id, {
+                                        id: ct.user_id,
+                                        name: ct.display_name || 'Unknown',
+                                        initials: (ct.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase(),
+                                        color: 'from-emerald-500 to-green-600'
+                                    }])
                                 ).values()
                             ).map(ct => (
                                 <div key={ct.id} className="flex items-center gap-2.5">
@@ -432,7 +437,7 @@ export const ProjectOverviewPage = ({
     const strictness = STRICTNESS_CFG[project.strictnessMode] || STRICTNESS_CFG.soft;
     const StrictnessIcon = strictness.icon;
 
-    const totalContributors = new Set(project.components.flatMap(c => c.contributors.map(ct => ct.id))).size;
+    const totalContributors = new Set(project.components.flatMap(c => c.contributors.map(ct => ct.user_id))).size;
 
     const handleOpenIDE = (component: ComponentItem) => {
         const readOnly = !project.isOwner && !component.isMyComponent;

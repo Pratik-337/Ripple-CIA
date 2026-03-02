@@ -74,12 +74,24 @@ export interface Contributor {
     color: string;
 }
 
+// Contributor from component (backend returns these fields)
+export interface ComponentContributor {
+    user_id: string;
+    display_name: string;
+    email: string;
+    role: string;
+    avatar_url?: string;
+}
+
+// Keep contributors for components as the new type
+export type ComponentContributors = ComponentContributor[];
+
 export interface ComponentItem {
     id: string;
     name: string;
     status: ComponentStatus;
     fileCount: number;
-    contributors: Contributor[];
+    contributors: ComponentContributor[];
     lastActivity: string;
     activeChanges: number;
     isMyComponent: boolean;
@@ -106,6 +118,8 @@ export interface ProjectData {
     createdAt: string;
     components: ComponentItem[];
     activeChanges: ActiveChange[];
+    // Flat list of all contributors for the project
+    allContributors?: ComponentContributor[];
 }
 
 export interface Component {

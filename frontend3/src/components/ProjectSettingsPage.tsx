@@ -337,22 +337,77 @@ const GeneralSection = ({ projectName, description }: { projectName: string; des
 };
 
 // Members
-const MembersSection = () => {
-    const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
-    const [invites, setInvites] = useState<PendingInvite[]>(INITIAL_INVITES);
+const MembersSection = ({ projectId }: { projectId: string }) => {
+    const queryClient = useQueryClient();
+    const { data: project } = useQuery({
+        queryKey: ['project', projectId],
+        queryFn: () => projectsApi.getProject(projectId),
+    });
+    const { data: invites = [] } = useQuery({
+        queryKey: ['project-invites', projectId],
+        queryFn: () => projectsApi.getInvites(projectId)
+    });
+    const { data: currentUser } = useQuery({
+        queryKey: ['currentUser'],
+        queryFn: () => authStore.getState().accessToken ? import('@/src/lib/api').then(m => m.authApi.me()) : Promise.resolve(null)
+    });
+
+    // Build members list from project data
+    const members: Member[] = React.useMemo(() => {
+        if (!project) return [];
+        const memberMap = new Map<string, Member>();
+        
+        // Add owner
+        if (project.owner) {
+            memberMap.set(project.owner.id, {
+                id: project.owner.id,
+                name: project.owner.name,
+                initials: project.owner.initials,
+                color: project.owner.color,
+                email: '',
+                role: project.isOwner ? 'Owner' as MemberRole : 'Contributor' as MemberRole,
+                components: ['All components'],
+                isYou: currentUser?.user?.id === project.owner.id,
+            });
+        }
+        
+        // Add contributors from components
+        project.components?.forEach(comp => {
+            comp.contributors?.forEach(contrib => {
+                const existing = memberMap.get(contrib.user_id);
+                const componentNames = existing ? [...existing.components, comp.name] : [comp.name];
+                memberMap.set(contrib.user_id, {
+                    id: contrib.user_id,
+                    name: contrib.display_name || 'Unknown',
+                    initials: (contrib.display_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase(),
+                    color: 'from-emerald-500 to-green-600',
+                    email: contrib.email || '',
+                    role: contrib.role === 'owner' ? 'Owner' as MemberRole : 'Contributor' as MemberRole,
+                    components: componentNames,
+                    isYou: currentUser?.user?.id === contrib.user_id,
+                });
+            });
+        });
+        
+        return Array.from(memberMap.values());
+    }, [project, currentUser]);
+
+    const [invitesList, setInvites] = useState<PendingInvite[]>(invites.map((i: any) => ({
+        id: i.id,
+        email: i.email,
+        component: i.component_name || 'All components',
+        sentAgo: new Date(i.created_at).toLocaleDateString(),
+    })));
     const [removingId, setRemovingId] = useState<string | null>(null);
     const [resentId, setResentId] = useState<string | null>(null);
 
-    const handleRoleChange = (id: string, role: MemberRole) => {
-        setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
+    // Note: Role changes and member removal require backend API endpoints - not yet implemented
+    const handleRoleChange = (_id: string, _role: MemberRole) => {
+        // TODO: Add API call when backend supports it
     };
 
-    const handleRemove = (id: string) => {
-        setRemovingId(id);
-        setTimeout(() => {
-            setMembers(prev => prev.filter(m => m.id !== id));
-            setRemovingId(null);
-        }, 600);
+    const handleRemove = (_id: string) => {
+        // TODO: Add API call when backend supports it
     };
 
     const handleResend = (id: string) => {
@@ -449,7 +504,7 @@ const MembersSection = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm text-white/70 truncate">{invite.email}</p>
-                                    <p className="text-[11px] text-white/30">{invite.component} · Sent {invite.sentAgo}</p>
+                                    <p className="text-[11px] text-white/30">{invite.component_name} · Sent {new Date(invite.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <span className="text-[10px] text-white/30 bg-white/[0.04] border border-white/[0.06] px-2 py-1 rounded-full">Pending</span>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -574,10 +629,14 @@ const DangerSection = ({
     projectName,
     onArchived,
     onDeleted,
+    isDeleting,
+    isArchiving,
 }: {
     projectName: string;
     onArchived: () => void;
     onDeleted: () => void;
+    isDeleting?: boolean;
+    isArchiving?: boolean;
 }) => {
     const [showArchive, setShowArchive] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
@@ -598,10 +657,11 @@ const DangerSection = ({
                     <button
                         id="archive-project-btn"
                         onClick={() => setShowArchive(true)}
-                        className="shrink-0 ml-8 flex items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-400 border border-amber-400/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-xl transition-colors"
+                        disabled={isArchiving}
+                        className="shrink-0 ml-8 flex items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-400 border border-amber-400/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-xl transition-colors disabled:opacity-50"
                     >
-                        <Archive className="h-3.5 w-3.5" />
-                        Archive
+                        {isArchiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                        {isArchiving ? 'Archiving...' : 'Archive'}
                     </button>
                 </div>
 
@@ -616,10 +676,11 @@ const DangerSection = ({
                     <button
                         id="delete-project-btn"
                         onClick={() => setShowDelete(true)}
-                        className="shrink-0 ml-8 flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-400 border border-rose-400/30 hover:border-rose-400/60 hover:bg-rose-400/10 rounded-xl transition-colors"
+                        disabled={isDeleting}
+                        className="shrink-0 ml-8 flex items-center gap-2 px-4 py-2 text-xs font-semibold text-rose-400 border border-rose-400/30 hover:border-rose-400/60 hover:bg-rose-400/10 rounded-xl transition-colors disabled:opacity-50"
                     >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
+                        {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        {isDeleting ? 'Deleting...' : 'Delete'}
                     </button>
                 </div>
             </div>
@@ -676,6 +737,23 @@ export const ProjectSettingsPage = ({
         queryKey: ['project-invites', projectId],
         queryFn: () => projectsApi.getInvites(projectId)
     });
+
+    const deleteMutation = useMutation({
+        mutationFn: () => projectsApi.delete(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            onDeleted();
+        },
+    });
+
+    const archiveMutation = useMutation({
+        mutationFn: () => projectsApi.delete(projectId, 'archive'),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            onArchived();
+        },
+    });
+
     const [activeSection, setActiveSection] = useState<NavSection>("general");
     const sectionRefs = useRef<Record<NavSection, HTMLDivElement | null>>({
         general: null, members: null, strictness: null, danger: null,
@@ -765,7 +843,7 @@ export const ProjectSettingsPage = ({
 
                         {/* Members */}
                         <div ref={el => { sectionRefs.current.members = el; }}>
-                            <MembersSection />
+                            <MembersSection projectId={projectId} />
                         </div>
 
                         <div className="h-px bg-white/[0.04]" />
@@ -781,8 +859,10 @@ export const ProjectSettingsPage = ({
                         <div ref={el => { sectionRefs.current.danger = el; }}>
                             <DangerSection
                                 projectName={projectData?.name || ""}
-                                onArchived={onArchived}
-                                onDeleted={onDeleted}
+                                onArchived={() => archiveMutation.mutate()}
+                                onDeleted={() => deleteMutation.mutate()}
+                                isDeleting={deleteMutation.isPending}
+                                isArchiving={archiveMutation.isPending}
                             />
                         </div>
 

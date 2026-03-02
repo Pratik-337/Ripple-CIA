@@ -219,18 +219,42 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db), curre
     )
     active_change_count = ch_res.scalar_one()
     
+    # Get owner info
+    owner_res = await db.execute(select(User).where(User.id == project.owner_id))
+    owner = owner_res.scalars().first()
+    is_owner = project.owner_id == current_user.id
+    
+    # Build all contributors list
+    all_contributors = []
+    for c in components:
+        for ccb in c.contributors:
+            all_contributors.append({
+                "user_id": ccb.user.id,
+                "display_name": ccb.user.display_name,
+                "email": ccb.user.email,
+                "role": ccb.role,
+                "avatar_url": ccb.user.avatar_url
+            })
+    
     return {
         "data": {
             "id": project.id,
             "name": project.name,
             "description": project.description,
-            "strictness_mode": project.strictness_mode,
+            "strictnessMode": project.strictness_mode,
             "status": project.status,
             "color": project.color,
             "icon": project.icon,
-            "created_at": project.created_at.isoformat(),
-            "owner_id": project.owner_id,
-            "activeChanges": active_change_count,
+            "createdAt": project.created_at.isoformat(),
+            "owner": {
+                "id": owner.id if owner else "",
+                "name": owner.display_name if owner else "",
+                "initials": "".join([n[0] for n in (owner.display_name.split() if owner and owner.display_name else [])]).upper() if owner else "?",
+                "color": "from-violet-500 to-purple-600"
+            },
+            "isOwner": is_owner,
+            "activeChanges": [],  # Placeholder - would need ChangeRequest query
+            "allContributors": all_contributors,
             "components": [
                 {
                     "id": c.id,
